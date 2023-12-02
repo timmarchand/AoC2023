@@ -14,11 +14,10 @@ ball_max <- dat %>%
   separate_wider_delim(cols = id, delim = ":", names = c("id", "games")) %>% 
   separate_longer_delim(games, ";") %>% 
   separate_longer_delim(games, ",") %>% 
-  mutate(id = parse_number (id),
-         games = str_squish(games)) %>% 
+  mutate(games = str_squish(games)) %>% 
   separate_wider_delim(cols = games, delim = " ", names = c("n", "colour")) %>% 
-  mutate(n = parse_number(n)) %>% 
-   summarise(max = max(n), .by = c(id, colour)) %>% 
+  mutate(across(c(id, n), parse_number)) %>% 
+  summarise(max = max(n), .by = c(id, colour)) %>% 
   pivot_wider(names_from = colour, values_from = max) 
 
 ball_max %>% 
