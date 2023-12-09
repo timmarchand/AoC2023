@@ -42,6 +42,17 @@ seeds <- read_lines(test, n_max = 1) %>%
   parse_number() %>% 
   .[!is.na(.)]
 
+maps %>% 
+  map_df(bind_rows) %>% 
+  summarise(min_s = min(s),
+            min_d = min(d),
+            max_s = max(s),
+            max_d = max(d)) %>% 
+  select(min_s, max_s) %>% glimpse
+  deframe %>% str
+  seq(.[1]:.[2])
+  bind_rows()
+
 maps <- read_lines(test, skip = 2) %>% 
   tibble(maps = .) %>% 
   filter(maps != "") %>% 
@@ -58,6 +69,11 @@ maps <- read_lines(test, skip = 2) %>%
   select(map, d,s) %>% 
   unnest(cols = c(d,s)) 
 
+maps$fertilizer_to_water %>% 
+  anti_join(index,., join_by("s")) %>% 
+  bind_rows(maps$fertilizer_to_water,.) %>% arrange(s)
+  fill(map, .direction = "downup")
+
 nms <- maps %>% 
   distinct(map) %>% 
   arrange(map) %>% 
@@ -71,18 +87,53 @@ maps %>%
   map(~full_join(index,.x, join_by(d == d, s == s)) %>% 
         fill(map, .direction = "downup") %>% 
         select(-index)) %>% 
-  map_df(bind_rows)
+  map_df(bind_rows) %>% 
+  group_split(map) %>% 
+  set_names(janitor::make_clean_names(nms))
 
-index <- tibble(index = 0:99, d = 0:99, s = 0:99)
+index <- tibble(d = 0:99, s = 0:99)
 
 index %>% 
   full_join(maps$seed_to_soil, join_by(d == d, s == s)) %>% 
-              select(-index))
+              select(-index)%>% 
+  fill(map, .direction = "downup") %>% 
+  arrange(s)
 
 maps %>% 
-  map(~summarise(.x, across(everything(),
-                 min = min,
-                 max = max)))
+  map(~full_join(.x, index, join_by(d == d, s == s))) %>% pluck("soil_to_fertilizer") %>% print(n = 100)
+  # pluck("seed_to_soil") %>% 
+  # filter(s %in% seeds) %>% 
+  # select(s = d) %>% 
+  inner_join(pluck(maps, "soil_to_fertilizer"),.) %>%  
+  select(s = d) %>% 
+  inner_join(pluck(maps, "fertilizer_to_water"),.) %>% 
+  select(s = d) %>% 
+  inner_join(pluck(maps, "water_to_light"),.) %>% 
+  select(s = d) %>%   
+  inner_join(pluck(maps, "light_to_temperature"),.) %>% 
+  select(s = d) %>% 
+  inner_join(pluck(maps, "temperature_to_humidity"),.)# %>% 
+  select(s = d) %>% 
+  inner_join(pluck(maps, "humidity_to_location"),.)
+  
+  
+  
+  
+
+seeds <- seeds %>% 
+  str_extract_all("\\d+") %>% 
+  unlist() %>% 
+  parse_number()
+  
+  maps %>%
+  pluck("seed_to_soil") %>% 
+  filter(s %in% seeds) %>% 
+    select(s = d) %>% 
+    inner_join(pluck(maps, "soil_to_fertilizer"),.)
+
+
+maps$soil_to_fertilizer %>% 
+  arrange(s)
 
 maps$seed_to_soil %>% 
  mutate(max_d = max(s))
