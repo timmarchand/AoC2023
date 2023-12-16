@@ -75,16 +75,17 @@ with_J <- dat %>%
 with_J %>% 
   group_by(rowid) %>% 
   add_count(value) %>% 
-  ## filter most common card
+  ## filter most common card thats not a J
   filter(value != "J") %>% 
   filter(n == max(n)) %>% 
+  # arrange in value of card
   arrange(desc(value)) %>% 
   ## take highest value most common card
   summarise(replace_with = first(value)) %>%
   left_join(with_J,.) %>% 
   ## replace Js with most common and highest value card
-  mutate(value2 = case_when(value != "J" ~ value, 
-                            value == "J"& is.na(replace_with) ~ "J",
+  mutate(value2 = case_when(value != "J" ~ value, # most cards keept their value
+                            value == "J"& is.na(replace_with) ~ "J", # in case there are only Js!
                             TRUE ~ replace_with)) %>% 
   group_by(rowid) %>% 
   add_count(value2) %>% 
@@ -92,7 +93,6 @@ with_J %>%
   ungroup() %>% 
   select(-c(rowid, n, value2, replace_with)) %>%
   pivot_wider(names_from = card, values_from = c(value)) %>%
-  arrange(nn,c1,c2,c3,c4,c5) %>% 
   # # join with non J set
    bind_rows(non_J) %>% 
    arrange(nn,c1,c2,c3,c4,c5) %>% 
