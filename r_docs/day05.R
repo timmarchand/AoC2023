@@ -35,14 +35,20 @@ humidity-to-location map:
 56 93 4"
 }
 # input data
-dat <- read_lines("input/day05.txt")
+dat <- read_lines("input/day05.txt") %>% 
+  str_extract_all("\\d+") %>% 
+  unlist() %>% 
+  parse_number() 
 
-seeds <- read_lines(test, n_max = 1) %>% 
-  str_split_1("\\D") %>% 
-  parse_number() %>% 
-  .[!is.na(.)]
+min(dat)
+max(dat)
 
-maps %>% 
+seeds <- read_lines("input/day05.txt", n_max = 1) %>% 
+  str_extract_all("\\d+") %>% 
+  unlist() %>% 
+  parse_number() 
+
+mapping %>% 
   map_df(bind_rows) %>% 
   summarise(min_s = min(s),
             min_d = min(d),
@@ -53,37 +59,39 @@ maps %>%
   seq(.[1]:.[2])
   bind_rows()
 
-maps <- read_lines(test, skip = 2) %>% 
-  tibble(maps = .) %>% 
-  filter(maps != "") %>% 
-  mutate(type = str_detect(maps, ":")) %>% 
+mapping <- read_lines("input/day05.txt", skip = 2) %>% 
+  tibble(mapping = .) %>% 
+  filter(mapping != "") %>% 
+  mutate(type = str_detect(mapping, ":")) %>% 
   mutate(id = cumsum(type)) %>% 
-  mutate(map = str_flatten(maps, " ") %>% 
+  mutate(map = str_flatten(mapping, " ") %>% 
            str_extract("^\\w+-to-\\w+"), .by = id) %>% 
   filter(!type) %>% 
-  select(map, range = maps) %>% 
+  select(map, range = mapping) %>% 
   separate_wider_delim(cols = range, names = c("dest", "source", "length"), delim = " ") %>%
-  mutate(across(dest:length, parse_number)) %>%  
+  mutate(across(dest:length, parse_number))
+
+mapping [1,] %>%  
   mutate(d = map2(dest, length, ~seq(from = .x, length.out = .y)),
          s = map2(source, length, ~seq(from = .x, length.out = .y))) %>% 
   select(map, d,s) %>% 
   unnest(cols = c(d,s)) 
 
-maps$fertilizer_to_water %>% 
+mapping$fertilizer_to_water %>% 
   anti_join(index,., join_by("s")) %>% 
-  bind_rows(maps$fertilizer_to_water,.) %>% arrange(s)
+  bind_rows(mapping$fertilizer_to_water,.) %>% arrange(s)
   fill(map, .direction = "downup")
 
-nms <- maps %>% 
+nms <- mapping %>% 
   distinct(map) %>% 
   arrange(map) %>% 
   pull
 
-maps <- maps %>% 
+mapping <- mapping %>% 
   group_split(map) %>% 
   set_names(janitor::make_clean_names(nms))
 
-maps %>% 
+mapping %>% 
   map(~full_join(index,.x, join_by(d == d, s == s)) %>% 
         fill(map, .direction = "downup") %>% 
         select(-index)) %>% 
@@ -94,27 +102,27 @@ maps %>%
 index <- tibble(d = 0:99, s = 0:99)
 
 index %>% 
-  full_join(maps$seed_to_soil, join_by(d == d, s == s)) %>% 
+  full_join(mapping$seed_to_soil, join_by(d == d, s == s)) %>% 
               select(-index)%>% 
   fill(map, .direction = "downup") %>% 
   arrange(s)
 
-maps %>% 
+mapping %>% 
   map(~full_join(.x, index, join_by(d == d, s == s))) %>% pluck("soil_to_fertilizer") %>% print(n = 100)
   # pluck("seed_to_soil") %>% 
   # filter(s %in% seeds) %>% 
   # select(s = d) %>% 
-  inner_join(pluck(maps, "soil_to_fertilizer"),.) %>%  
+  inner_join(pluck(mapping, "soil_to_fertilizer"),.) %>%  
   select(s = d) %>% 
-  inner_join(pluck(maps, "fertilizer_to_water"),.) %>% 
+  inner_join(pluck(mapping, "fertilizer_to_water"),.) %>% 
   select(s = d) %>% 
-  inner_join(pluck(maps, "water_to_light"),.) %>% 
+  inner_join(pluck(mapping, "water_to_light"),.) %>% 
   select(s = d) %>%   
-  inner_join(pluck(maps, "light_to_temperature"),.) %>% 
+  inner_join(pluck(mapping, "light_to_temperature"),.) %>% 
   select(s = d) %>% 
-  inner_join(pluck(maps, "temperature_to_humidity"),.)# %>% 
+  inner_join(pluck(mapping, "temperature_to_humidity"),.)# %>% 
   select(s = d) %>% 
-  inner_join(pluck(maps, "humidity_to_location"),.)
+  inner_join(pluck(mapping, "humidity_to_location"),.)
   
   
   
@@ -125,17 +133,17 @@ seeds <- seeds %>%
   unlist() %>% 
   parse_number()
   
-  maps %>%
+  mapping %>%
   pluck("seed_to_soil") %>% 
   filter(s %in% seeds) %>% 
     select(s = d) %>% 
-    inner_join(pluck(maps, "soil_to_fertilizer"),.)
+    inner_join(pluck(mapping, "soil_to_fertilizer"),.)
 
 
-maps$soil_to_fertilizer %>% 
+mapping$soil_to_fertilizer %>% 
   arrange(s)
 
-maps$seed_to_soil %>% 
+mapping$seed_to_soil %>% 
  mutate(max_d = max(s))
 
 expand_range <- function(tbl, col1, col2){
